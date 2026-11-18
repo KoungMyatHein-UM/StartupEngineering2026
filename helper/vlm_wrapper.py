@@ -9,18 +9,20 @@ class VlmWrapper:
     A plain tool class: it holds the settings and does work only when called.
     identify() blocks while the model thinks (a few seconds)."""
 
-    def __init__(self, model, products, keep_alive="1h"):
+    def __init__(self, model, products, keep_alive="1h", timeout=30):
         """model: Ollama model name, e.g. "qwen3-vl:8b".
         products: the closed list of product names the model may answer with.
         keep_alive: how long Ollama keeps the model loaded after a call."""
-        self._client = ollama.Client(timeout=30)
+        self._client = ollama.Client(timeout=timeout)
         self._model = model
         self._products = list(products)
         self._keep_alive = keep_alive
 
-    def warm_up(self):
+        self._warm_up()
+
+    def _warm_up(self):
         """Load the model now, so the first identify() isn't slowed down by loading."""
-        ollama.generate(model=self._model, prompt="", keep_alive=self._keep_alive)
+        self._client.generate(model=self._model, prompt="", keep_alive=self._keep_alive)
 
     def identify(self, composites, delta):
         """composites: one side-by-side helper per camera (base left, new right).

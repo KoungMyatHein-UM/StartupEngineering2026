@@ -1,0 +1,22 @@
+{
+  "coke": {
+    "nutrition_per_gram": {"calories": 0.42, "fat": 0.0, "protein": 0.0, "carbs": 0.106},
+    "serving_g": 250,
+    "packaging_g": 40
+  },
+  "nutella 600g": {
+    "nutrition_per_gram": {"calories": 5.39, "fat": 0.309, "protein": 0.063, "carbs": 0.575},
+    "serving_g": 15,
+    "packaging_g": null
+  },
+  "nutella 825g": {
+    "nutrition_per_gram": {"calories": 5.39, "fat": 0.309, "protein": 0.063, "carbs": 0.575},
+    "serving_g": 15,
+    "packaging_g": 420
+  },
+  "beef jerky": {
+    "nutrition_per_gram": {"calories": 2.53, "fat": 0.035, "protein": 0.35, "carbs": 0.2},
+    "serving_g": 40,
+    "packaging_g": null
+  }
+}
