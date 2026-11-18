@@ -4,10 +4,16 @@ STATUS = {1: "fault", 2: "zero", 3: "in motion", 4: "stable",
 UNITS = {2: "g", 11: "oz", 12: "lb"}
 
 
+class ScaleOffError(OSError):
+    """The scale is connected but switched off (it reports unit 0)."""
+
+
 def decode(data):
     if not data or len(data) < 6:
         return None
     _report_id, status, unit, exp, lo, hi = data[:6]
+    if unit == 0:
+        raise ScaleOffError("Scale is switched off. Press the power button on the scale.")
     if exp > 127:                     # scaling exponent is a signed byte
         exp -= 256
     value = (lo | (hi << 8)) * (10 ** exp)
