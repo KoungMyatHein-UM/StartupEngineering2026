@@ -58,6 +58,10 @@ class ListenerService:
     def _run(self):
         while not self._stop.is_set():
             reading = self._source()
+            if reading is None and self._previous is not None:
+                # The reader was reset (scale switched back on): the next value is a new start.
+                log("reader reset; waiting for a new starting point")
+                self._previous = None
             if reading is not None:
                 old = self._previous
                 if old is None:

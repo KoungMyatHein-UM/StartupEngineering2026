@@ -1,16 +1,20 @@
 import threading
+import time
 from collections import deque
 
 from helper.debug_log import log
 
 
 class ReaderService:
-    def __init__(self, source, window=10, n=2):
+    def __init__(self, source, window=10, n=2, settle=5.0):
+        """settle: seconds to ignore readings after the scale comes back on, while it zeroes
+        itself and reports leftover start-up values."""
         if not 1 <= n <= window:
             raise ValueError("n must be between 1 and the window size")
         self._source = source                    # any function that returns the next value
         self._window = deque(maxlen=window)      # raw history, owned by the service
         self._n = n                              # consecutive matches needed to accept a value
+        self._settle = settle
         self._latest = None                      # last accepted value; written only by _run()
         self._lock = threading.Lock()
         self._stop = threading.Event()
@@ -31,6 +35,7 @@ class ReaderService:
     def _run(self):
         last_raw = None
         last_error = None
+        ignore_until = 0.0                               # end of the settling period
         while not self._stop.is_set():
             try:
                 value = self._source()
@@ -40,9 +45,16 @@ class ReaderService:
                     last_error = str(e)
                 continue
             if last_error is not None:
-                log("reading again")
+                # The scale came back on: forget everything and let it settle first.
+                log(f"reading again; ignoring readings for {self._settle:g} s while the scale settles")
                 last_error = None
+                ignore_until = time.time() + self._settle
+                with self._lock:
+                    self._window.clear()
+                    self._latest = None
             if value is None:
+                continue
+            if time.time() < ignore_until:
                 continue
             if value != last_raw:                        # only log changes, not every report
                 log(f"raw report: {value}")

@@ -54,7 +54,8 @@ def main():
     log(f"Cameras found: {camera_indices} ({time.time() - t:.2f} s)")
     cameras = CameraService(camera_indices, debug=True)
 
-    vision = VlmWrapper("qwen3-vl:8b", ["almond oil", "coke", "butter"])
+    items = ["almond oil", "coke", "butter"]
+    vision = VlmWrapper("qwen3-vl:8b-instruct", items + ["nothing"])
     t = time.time()
     log("Loading the VLM...")
     vision.warm_up()
@@ -77,11 +78,20 @@ def main():
         listener_service.start()
         log("Listener service started")
 
+        if reader_service.latest() is None:
+            log("Waiting for the scale (switch it on if it's off)...")
+            while reader_service.latest() is None:
+                cameras.show_debug()
+                time.sleep(0.05)
+
         log(f"ALL READY. Current weight: {reader_service.latest()}")
 
         while True:
             cameras.show_debug()
             time.sleep(0.05)
+
+    except KeyboardInterrupt:
+        log("Ctrl+C pressed")
 
     finally:
         log("Shutting down")

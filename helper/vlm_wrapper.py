@@ -1,5 +1,6 @@
 import cv2
 import ollama
+from helper.debug_log import log
 
 
 class VlmWrapper:
@@ -12,6 +13,7 @@ class VlmWrapper:
         """model: Ollama model name, e.g. "qwen3-vl:8b".
         products: the closed list of product names the model may answer with.
         keep_alive: how long Ollama keeps the model loaded after a call."""
+        self._client = ollama.Client(timeout=30)
         self._model = model
         self._products = list(products)
         self._keep_alive = keep_alive
@@ -32,22 +34,28 @@ class VlmWrapper:
             action, verb = f"The weight went down by {-delta:.0f} g, so an item was REMOVED.", "removed"
 
         prompt = (
-            "Each helper shows the same crate from one camera: BEFORE on the left (labelled "
+            "Each image shows the same crate from one camera: BEFORE on the left (labelled "
             "'before') and AFTER on the right (labelled 'after').\n"
-            f"{action}\n"
-            f"Which of these products was {verb}: {', '.join(self._products)}?\n"
-            "Answer with only the product name from the list, nothing else."
+            f"The weight changed by {delta:+.0f} g.\n"
+            f"Which product {'appeared' if delta > 0 else 'disappeared'} between before and after: "
+            f"{', '.join(self._products)}?\n"
+            "If the before and after images show the same products, answer: nothing.\n"
+            "Answer with only one name from the list, nothing else."
         )
         images = [cv2.imencode(".jpg", image)[1].tobytes() for image in composites]
 
-        response = ollama.chat(
+        response = self._client.chat(
             model=self._model,
             messages=[{"role": "user", "content": prompt, "images": images}],
             think=False,
             keep_alive=self._keep_alive,
-            options={"temperature": 0},          # same input -> same answer
+            options={"temperature": 0, "num_predict": 20},          # same input -> same answer
         )
-        return self._match(response.message.content)
+
+        answer = response.message.content or ""
+        log(f"VLM thinking: {len(response.message.thinking or '')} characters")
+        log(f"VLM raw answer: {answer!r}")
+        return self._match(answer)
 
     def _match(self, answer):
         """Map the model's free-text answer onto the product list (case-insensitive)."""
