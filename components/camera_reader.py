@@ -11,13 +11,29 @@ BACKEND = {"win32": cv2.CAP_DSHOW, "darwin": cv2.CAP_AVFOUNDATION}.get(sys.platf
 
 
 def find_cameras(max_index=6):
-    """Return the indices of cameras that open and deliver a frame."""
-    # MacBook: index 0 is the built-in camera. (On a Mac without one, 0 may be a USB camera.)
-    skip = {0} if sys.platform == "darwin" else set()
+    """Return the indices of the cameras to use: every camera except built-in ones."""
+    if sys.platform == "darwin":
+        return _find_cameras_macos()
+    return _find_cameras_windows(max_index)
+
+
+# Name fragments of built-in cameras, to leave out (lowercase).
+BUILT_IN = ("facetime", "macbook", "built-in", "integrated")
+
+
+def _find_cameras_macos():
+    """macOS reorders camera indices (after replugging or sleep), so select by name instead.
+    The built-in camera (e.g. "FaceTime HD Camera") is left out wherever it ends up."""
+    from cv2_enumerate_cameras import enumerate_cameras      # only needed on macOS
+    return [camera.index for camera in enumerate_cameras(BACKEND)
+            if not any(word in camera.name.lower() for word in BUILT_IN)]
+
+
+def _find_cameras_windows(max_index):
+    """The original approach, as tested on the workstation: every index that opens
+    and delivers a frame. The workstation has no built-in camera to leave out."""
     found = []
     for i in range(max_index):
-        if i in skip:
-            continue
         cap = cv2.VideoCapture(i, BACKEND)
         if cap.isOpened() and cap.read()[0]:
             found.append(i)
@@ -35,8 +51,9 @@ class CameraService:
     Debug mode: every capture is also queued for display. Call show_debug() regularly
     from the MAIN thread to open/update one window per camera showing base | new."""
 
-    def __init__(self, indices, debug=False):
+    def __init__(self, indices, debug=False, warmup_frames=5):
         self._indices = list(indices)
+        self._warmup_frames = warmup_frames
         self._base = None                                 # one frame per camera
         self._debug = queue.Queue() if debug else None    # captures waiting to be shown
 
@@ -83,6 +100,8 @@ class CameraService:
             try:
                 if not cap.isOpened():
                     raise RuntimeError(f"camera {i} did not open")
+                for _ in range(self._warmup_frames):  # first frames are dark while exposure adjusts
+                    cap.read()
                 ok, frame = cap.read()
                 if not ok:
                     raise RuntimeError(f"camera {i} did not deliver a frame")

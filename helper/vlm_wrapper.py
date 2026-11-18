@@ -44,7 +44,7 @@ class VlmWrapper:
             "If the before and after images show the same products, answer: nothing.\n"
             "Answer with only one name from the list, nothing else."
         )
-        images = [cv2.imencode(".jpg", image)[1].tobytes() for image in composites]
+        images = [cv2.imencode(".jpg", self._shrink(image))[1].tobytes() for image in composites]
 
         response = self._client.chat(
             model=self._model,
@@ -58,6 +58,15 @@ class VlmWrapper:
         log(f"VLM thinking: {len(response.message.thinking or '')} characters")
         log(f"VLM raw answer: {answer!r}")
         return self._match(answer)
+
+    @staticmethod
+    def _shrink(image, max_width=1280):
+        """Scale an image down to max_width (keeping proportions), so the VLM stays fast."""
+        height, width = image.shape[:2]
+        if width <= max_width:
+            return image
+        scale = max_width / width
+        return cv2.resize(image, (max_width, int(height * scale)), interpolation=cv2.INTER_AREA)
 
     def _match(self, answer):
         """Map the model's free-text answer onto the product list (case-insensitive)."""

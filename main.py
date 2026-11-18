@@ -44,6 +44,7 @@ def on_change(data, cameras, vision, ledger):
     log(f"Captured {len(pairs)} camera(s) in {time.time() - t:.2f} s")
 
     composites = [image_processing.side_by_side(base, new) for base, new in pairs]
+    log(f"Composite sizes: {[c.shape[1::-1] for c in composites]}")   # (width, height)
 
     t = time.time()
     log("Asking the VLM...")
