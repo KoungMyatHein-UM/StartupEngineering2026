@@ -2,7 +2,7 @@ import time
 import hid
 from rich.live import Live
 
-from device_link import parser
+from services.link.device_link import parser
 from helper import image_processing, tui
 from helper.debug_log import log
 from helper.vlm_wrapper import VlmWrapper
