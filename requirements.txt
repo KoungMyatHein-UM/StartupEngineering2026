@@ -1,0 +1,5 @@
+hidapi         # import hid: reading the Dymo scale over USB
+opencv-python  # import cv2: cameras, image processing, debug windows
+numpy          # image arrays (also required by OpenCV)
+ollama         # talking to the local VLM
+rich           # the colour terminal UI
